@@ -170,7 +170,6 @@ if torch.cuda.is_available():
 elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
     device = "mps"
 print(f"using device: {device}")
-device = "cpu" # OVERRIDE
 
 # get a data batch
 enc = tiktoken.get_encoding("gpt2")
@@ -180,6 +179,7 @@ text = text[:1000] # first 1,000 characters
 tokens = enc.encode(text)
 B, T = 4, 32
 buf = torch.tensor(tokens[:B*T + 1])
+buf = buf.to(device)
 x = buf[:-1].view(B, T)
 y = buf[1:].view(B, T)
 
@@ -187,9 +187,16 @@ y = buf[1:].view(B, T)
 # model = GPT.from_pretrained('gpt2')
 model = GPT(GPTConfig())
 model.to(device) 
-logits, loss = model(x, y)
 
-print(loss)
+# optimizer!
+optimizer = torch.optim.AdamW(model.parameters(), lr=3e-4)
+for i in range(50):
+    optimizer.zero_grad()
+    logits, loss = model(x, y)
+    loss.backward()
+    optimizer.step()
+    print(f"step {i} , loss {loss.item()}")
+
 import sys; sys.exit(0)
 
 # prefix tokens
